@@ -5,3 +5,7 @@
 {% else %}
   <h1>Hello, World!</h1>
 {% endif %}
+
+{% if user %}
+<pre>{{ user|tojson }}</pre>
+{% endif %}
