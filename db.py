@@ -9,6 +9,9 @@ SNAPSHOT_STATUS_DOING = "doing"
 SNAPSHOT_STATUS_DONE = "done"
 SNAPSHOT_STATUS_FAIL = "fail"
 
+SNAPSHOT_TYPE_TOOT = "toot"
+SNAPSHOT_TYPE_FAV = "fav"
+
 class Db:
     db = None
     def get_db(self,):
@@ -61,20 +64,18 @@ class Db:
                 cur.execute("SELECT * FROM users WHERE id = %s;", (id,))
                 return  cur.fetchone()
 
-    def add_snapshot(self,user_id, snap_type, snap_start, snap_end):
+    def add_snapshot(self,user_id, snap_type):
         """
         add snapshot and return snapshot.id
         """
         now = datetime.now()
         with self.get_db() as db:
             with db.cursor() as cur:
-                cur.execute("INSERT INTO snapshots (owner, snap_type, snap_start, snap_end, status, created_at, updated_at) VALUES "
-                            + "(%(owner)s, %(snap_type)s, %(snap_start)s, %(snap_end)s, %(status)s, %(created_at)s, %(updated_at)s) RETURNING id",
+                cur.execute("INSERT INTO snapshots (owner, snap_type, status, created_at, updated_at) VALUES "
+                            + "(%(owner)s, %(snap_type)s, %(status)s, %(created_at)s, %(updated_at)s) RETURNING id",
                             {
                                 "owner": user_id,
                                 "snap_type": snap_type,
-                                "snap_start": snap_start,
-                                "snap_end" : snap_end,
                                 "created_at": now,
                                 "updated_at": now,
                                 "status": SNAPSHOT_STATUS_WAIT,

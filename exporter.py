@@ -6,6 +6,9 @@ import json
 from datetime import datetime
 from time import sleep
 import traceback
+import tempfile
+import os.path as path
+import shutil
 
 q = Queue(connection=conn)
 
@@ -16,9 +19,9 @@ def get_mastodon(access_token=None):
         api_base_url = 'https://gensokyo.cloud'
     )
 
-def reserve_snapshot(user_id, snap_type, snap_start, snap_end):
+def reserve_snapshot(user_id, snap_type):
     db = dbpkg.Db()
-    snapshot_id = db.add_snapshot(user_id, snap_type, snap_start, snap_end)
+    snapshot_id = db.add_snapshot(user_id, snap_type)
     q.enqueue(export_toots,snapshot_id)
 
 def export_toots(snapshot_id):
@@ -30,33 +33,55 @@ def export_toots(snapshot_id):
         m = get_mastodon(access_token = owner['access_token'])
         print(snapshot)
         toots = []
-        page = m.account_statuses(owner['mastodon_id'], limit=100)
+        if snapshot['snap_type'] == dbpkg.SNAPSHOT_TYPE_TOOT:
+            page = m.account_statuses(owner['mastodon_id'], limit=100)
+        elif snapshot['snap_type'] == dbpkg.SNAPSHOT_TYPE_FAV:
+            page = m.favourites(limit=100)
+        else:
+            raise ValueError('invalid snap_type: {0}'.format(snapshot['snap_type']))
         if page is not None:
             toots += page
+            #while True:
             for i in range(10):
                 page = m.fetch_next(page)
                 if page is None:
                     break
                 toots += page
-                # TODO: check snap_start and snap_end
                 sleep(1)
-        with open("snap_{0}.json".format(snapshot_id), "w") as f:
-            json.dump(toots, f, default=json_default, indent=2)
         # TODO: generate html
+        archive = save_local(toots)
+        print(archive)
         # TODO: save to S3
         db.update_snapshot(snapshot_id, {'status': dbpkg.SNAPSHOT_STATUS_DONE})
     except Exception as e:
-        print("snapshot failed: {0}".format(snapshot_id))
+        print('snapshot failed: {0}'.format(snapshot_id))
         print(traceback.format_exc())
         try:
             db.update_snapshot(snapshot_id, {'status': dbpkg.SNAPSHOT_STATUS_FAIL})
         except Exception as e:
-            print("snapshot failed: {0}".format(snapshot_id))
+            print('snapshot failed: {0}'.format(snapshot_id))
             print(traceback.format_exc())
+
+def save_local(toots):
+    '''
+    return path to archive
+    '''
+    tmpdir = tempfile.mkdtemp()
+    with open(path.join(tmpdir, 'index.html'), 'w') as f:
+        f.write('''
+<!doctype html>
+<script>
+var toots = 
+        ''')
+        f.write(json.dumps(toots, default=json_default))
+        f.write('''
+</script>
+        ''')
+    return shutil.make_archive("save", "zip", tmpdir)
 
 # datetimeがjson serializableじゃないので変換を定義する
 def json_default(o):
     # See https://qiita.com/podhmo/items/dc748a9d40026c28556d
     if isinstance(o, datetime):
         return o.isoformat()
-    raise TypeError(repr(o) + " is not JSON serializable")
+    raise TypeError(repr(o) + ' is not JSON serializable')

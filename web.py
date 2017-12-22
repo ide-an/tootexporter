@@ -20,10 +20,12 @@ def close_db(error):
 def index():
     user = None
     dbdata = None
+    snapshots = None
     if 'user' in session:
         user = session['user']
         dbdata = get_db().get_user_by_mastodon_id(user['id'])
-        snapshots = get_db().get_snapshots_by_owner(dbdata['id'])
+        if dbdata is not None:
+            snapshots = get_db().get_snapshots_by_owner(dbdata['id'])
     return render_template('hello.html', name='john', user=user, dbdata = dbdata, snapshots= snapshots)
 
 @app.route('/snapshot', methods=['POST'])
@@ -35,18 +37,14 @@ def save_snapshot():
         flash("なんか入力がミスってる")
         return redirect(url_for('index'))
     snap_type = request.form['snap_type']
-    snap_start = jpdatetime(request.form['snap_start'])
-    snap_end = jpdatetime(request.form['snap_end'])
-    app.logger.debug("snapshot: type %s, start %s, end %s", snap_type, snap_start, snap_end)
-    exporter.reserve_snapshot(user['id'], snap_type, snap_start, snap_end)
+    app.logger.debug("snapshot: type %s", snap_type)
+    exporter.reserve_snapshot(user['id'], snap_type)
     return redirect(url_for('index'))
 
 def validate_snapshot_form():
     try:
-        snap_start = jpdatetime(request.form['snap_start'])
-        snap_end = jpdatetime(request.form['snap_end'])
         snap_type = request.form['snap_type']
-        if snap_type not in ["toot", "fav"]:
+        if snap_type not in [db.SNAPSHOT_TYPE_TOOT, db.SNAPSHOT_TYPE_FAV]:
             return False
         return True
     except Exception as e:
