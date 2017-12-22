@@ -9,3 +9,31 @@
 {% if user %}
 <pre>{{ user|tojson }}</pre>
 {% endif %}
+{% if dbdata %}
+<pre>{{ dbdata|tojson }}</pre>
+{% endif %}
+{% if snapshots %}
+{% for snap in snapshots %}
+<pre>{{ snap|tojson }}</pre>
+{% endfor %}
+{% endif %}
+
+<form method="POST" action="/snapshot">
+  <input type="date" name="snap_start" value="2017-04-16">
+  <input type="date" name="snap_end" value="2017-12-31">
+  <select name="snap_type">
+    <option value="toot">自分の投稿</option>
+    <option value="fav">自分のお気に入り（ふぁぼ）</option>
+  </select>
+  <button type="submit">作成</button>
+</form>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}

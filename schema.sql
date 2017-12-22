@@ -14,7 +14,7 @@ create table snapshots (
   snap_type                 varchar(16), -- toot or fav
   snap_start                timestamp not null,
   snap_end                  timestamp not null,
-  status                    varchar(16), -- wait or doing or done
+  status                    varchar(16), -- wait, doing, done, fail
   bucket                    varchar(255), -- AWS S3 bucket
   key                       varchar(255), -- AWS S3 key
   created_at                timestamp not null,
