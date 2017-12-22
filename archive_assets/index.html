@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>exported toots</title>
+    <script src="./toots.js"></script>
+    <script src="./jquery-3.2.1.min.js"></script>
+    <script>
+      $(function(){
+        function toothtml(toot) {
+          var el = $("#template > .status").clone();
+          var datestr = (new Date(toot.created_at)).toLocaleString();
+          el.find(".status__info time").text(datestr);
+          el.find(".status__avatar img").attr("src", toot.account.avatar);
+          el.find(".display-name__html").text(toot.account.display_name);
+          el.find(".display-name__account").text("@"+toot.account.acct);
+          if (toot.spoiler_text != "") {
+            el.find(".status__content p").text(toot.spoiler_text)
+            el.find(".status__content__text").html(toot.content)
+          } else {
+            el.find(".status__content").html(toot.content)
+          }
+          if (toot.media_attachments.length > 0) {
+            toot.media_attachments.forEach(function(media) {
+              var item_el = $('<div class="media-gallery__item"><a class="media-gallery__item-thumbnail" target="_blank"><img></a><span class="media_type"></span></div>');
+              item_el.find(".media-gallery__item-thumbnail").attr("href",media.url);
+              item_el.find(".media-gallery__item-thumbnail img").attr("src",media.preview_url);
+              if (media.type === "image") {
+                item_el.find(".media_type").hide();
+              } else {
+                item_el.find(".media_type").text(media.type);
+              }
+              el.find(".media-gallery").append(item_el);
+            })
+          } else {
+            el.find(".media-gallery").hide()
+          }
+          return el
+        }
+        function appendToots(toots, appendTo) {
+          toots.forEach(function(toot) {
+            var el;
+            if (toot.reblog) {
+              reblog_el = toothtml(toot.reblog);
+              el = $("#template > .status__wrapper").clone();
+              var datestr = (new Date(toot.created_at)).toLocaleString();
+              el.find("time").text(datestr);
+              el.find(".display-name__html").text(toot.account.display_name);
+              el.find(".display-name__account").text("@"+toot.account.acct);
+              el.append(reblog_el);
+            } else {
+              el = toothtml(toot);
+            }
+            el.appendTo(appendTo);
+          });
+        }
+        appendToots(toots, $(".timeline"));
+      })
+    </script>
+    <style>
+      .media-gallery__item {
+        overflow: hidden;
+        height: 100px;
+        width: 200px;
+        position: relative;
+      }
+      .media-gallery__item .media_type {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background-color: #666;
+        color: #fff;
+      }
+      .media-gallery__item-thumbnail, .media-gallery__item-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit:cover;
+        margin: 5px;
+      }
+      .status__avatar img {
+        width: 36px;
+        height: 36px;
+      }
+      .status__content__text {
+        background-color: #666;
+      }
+      article {
+        border-bottom: 1px #555 solid;
+        word-wrap: break-word;
+      }
+      a {
+        color: #ccc;
+      }
+      a:visited, a:active {
+        color: #999;
+      }
+      a:hover {
+        color: #fff;
+      }
+      .status__avatar {
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .status__wrapper article {
+        border: none;
+      }
+      html,body {
+        background-color: #333;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+
+    <div style="display: none" id="template">
+      <article class="status">
+        <div class="status__info">
+          <div class="status__avatar"><img></div>
+          <span class="display-name"><strong class="display-name__html"></strong><span class="display-name__account"></span></span>
+          <time></time>
+        </div>
+        <div class="status__content">
+          <p style=""></p>
+          <div tabindex="0" class="status__content__text"></div>
+        </div>
+        <div class="media-gallery">
+        </div>
+      </article>
+      <article class="status__wrapper">
+        <div class="status__prepend">
+          <span>Boost by </span><span class="display-name"><strong class="display-name__html"></strong><span class="display-name__account"></span></span>
+          <time></time>
+        </div>
+      </article>
+    </div>
+
+    <div class="timeline">
+    </div>
+  </body>
+</html>

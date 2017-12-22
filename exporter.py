@@ -67,16 +67,13 @@ def save_local(toots):
     return path to archive
     '''
     tmpdir = tempfile.mkdtemp()
-    with open(path.join(tmpdir, 'index.html'), 'w') as f:
+    with open(path.join(tmpdir, 'toots.js'), 'w') as f:
         f.write('''
-<!doctype html>
-<script>
 var toots = 
         ''')
         f.write(json.dumps(toots, default=json_default))
-        f.write('''
-</script>
-        ''')
+    shutil.copy('archive_assets/index.html', path.join(tmpdir, 'index.html'))
+    shutil.copy('archive_assets/jquery-3.2.1.min.js', path.join(tmpdir, 'jquery-3.2.1.min.js'))
     return shutil.make_archive("save", "zip", tmpdir)
 
 # datetimeがjson serializableじゃないので変換を定義する
