@@ -115,3 +115,9 @@ class Db:
         with self.get_db() as db:
             with db.cursor() as cur:
                 cur.execute(sql, sql_values)
+
+    def count_waiting_snapshots(self):
+        with self.get_db() as db:
+            with db.cursor() as cur:
+                cur.execute("SELECT count(*) FROM snapshots WHERE status in ('wait', 'doing');")
+                return  cur.fetchone()[0]

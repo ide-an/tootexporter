@@ -34,7 +34,8 @@ def index():
         dbdata = get_db().get_user_by_mastodon_id(user['id'])
         if dbdata is not None:
             snapshots = get_db().get_snapshots_by_owner(dbdata['id'])
-    return render_template('index.html', user=user, snapshots=snapshots)
+    waiting_count = get_db().count_waiting_snapshots()
+    return render_template('index.html', user=user, snapshots=snapshots, waiting_count=waiting_count)
 
 @app.route('/snapshot', methods=['POST'])
 def save_snapshot():
