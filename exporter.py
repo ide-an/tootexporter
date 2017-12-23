@@ -25,7 +25,7 @@ def get_mastodon(access_token=None):
 def reserve_snapshot(user_id, snap_type):
     db = dbpkg.Db()
     snapshot_id = db.add_snapshot(user_id, snap_type)
-    q.enqueue(export_toots, snapshot_id, timeout=60*60) # timeout: 60min
+    q.enqueue(export_toots, snapshot_id, timeout=60*60*12) # timeout: 12hour
 
 # だいぶザルだけど無限ループを避けておきたいというお気持ち
 API_CALL_MAX=1000000
@@ -50,9 +50,12 @@ def export_toots(snapshot_id):
             for i in range(API_CALL_MAX):
                 page = m.fetch_next(page)
                 if page is None:
+                    print('API call:{0}, toots:{1}'.format(i, len(toots))) # debug log
                     break
                 toots += page
                 sleep(1)
+                if i % 10 == 0: # debug log
+                    print('API call:{0}, toots:{1}'.format(i, len(toots)))
             else:
                 raise SystemError('too many API call')
         # save toots to AWS S3
