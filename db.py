@@ -91,7 +91,7 @@ class Db:
     def get_snapshots_by_owner(self,user_id):
         with self.get_db() as db:
             with db.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-                cur.execute("SELECT * FROM snapshots WHERE owner = %s;", (user_id,))
+                cur.execute("SELECT * FROM snapshots WHERE owner = %s ORDER BY id;", (user_id,))
                 return  cur.fetchall()
 
     def update_snapshot(self,id, values):
