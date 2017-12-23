@@ -43,11 +43,11 @@ def save_snapshot():
         abort(401)
     user = get_db().get_user_by_mastodon_id(session['user']['id'])
     if not(validate_snapshot_form()):
-        flash("なんか入力がミスってる")
+        flash('なんか入力がミスってる', 'error')
         return redirect(url_for('index'))
     snap_type = request.form['snap_type']
-    app.logger.warning("snapshot: type %s", snap_type)
     exporter.reserve_snapshot(user['id'], snap_type)
+    flash('保存依頼を受け付けました。', 'info')
     return redirect(url_for('index'))
 
 def validate_snapshot_form():
