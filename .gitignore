@@ -3,5 +3,5 @@ __pycache__/
 *.secret
 .vagrant/
 snap*.json
-.env
-.env.prod
+.env*
+!.env.sample
