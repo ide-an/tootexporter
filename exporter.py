@@ -27,6 +27,8 @@ def reserve_snapshot(user_id, snap_type):
     snapshot_id = db.add_snapshot(user_id, snap_type)
     q.enqueue(export_toots,snapshot_id)
 
+# だいぶザルだけど無限ループを避けておきたいというお気持ち
+API_CALL_MAX=1000000
 def export_toots(snapshot_id):
     try:
         db = dbpkg.Db()
@@ -45,13 +47,14 @@ def export_toots(snapshot_id):
             raise ValueError('invalid snap_type: {0}'.format(snapshot['snap_type']))
         if page is not None:
             toots += page
-            #while True:
-            for i in range(10):
+            for i in range(API_CALL_MAX):
                 page = m.fetch_next(page)
                 if page is None:
                     break
                 toots += page
                 sleep(1)
+            else:
+                raise SystemError('too many API call')
         # save toots to AWS S3
         with tempfile.TemporaryDirectory() as tmpdir:
             archive = save_local(toots, tmpdir)
