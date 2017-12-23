@@ -9,6 +9,7 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", inline: <<-SHELL
     apt-get update -y
     apt-get install python3 python3-pip python3-dev libpq-dev redis-server -y
+    cd tootexporter/
     gem install foreman
     pip3 install -r requirements.txt
     # postgresql
@@ -19,12 +20,6 @@ Vagrant.configure("2") do |config|
     # create db
     echo "alter role postgres with password 'pass';create database tootexporter;" |  sudo -u postgres psql
     cat schema.sql |  sudo -u postgres psql -d tootexporter
-    # settings
-    export `cat .env`
-    # start apps
-    nohup python3 worker.py &
-    export FLASK_APP=web.py
-    nohup flask run --host=0.0.0.0  &
   SHELL
 end
 
