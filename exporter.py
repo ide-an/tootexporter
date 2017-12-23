@@ -25,7 +25,7 @@ def get_mastodon(access_token=None):
 def reserve_snapshot(user_id, snap_type):
     db = dbpkg.Db()
     snapshot_id = db.add_snapshot(user_id, snap_type)
-    q.enqueue(export_toots,snapshot_id)
+    q.enqueue(export_toots, snapshot_id, timeout=60*30) # timeout: 30min
 
 # だいぶザルだけど無限ループを避けておきたいというお気持ち
 API_CALL_MAX=1000000
