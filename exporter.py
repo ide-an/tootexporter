@@ -10,14 +10,16 @@ import tempfile
 import os.path as path
 import shutil
 import boto3
+import os
 
 q = Queue(connection=conn)
 
 def get_mastodon(access_token=None):
     return Mastodon(
-        client_id = 'client.secret',
+        client_id = os.environ['MASTODON_CLIENT_ID'],
+        client_secret = os.environ['MASTODON_CLIENT_SECRET'],
         access_token = access_token,
-        api_base_url = 'https://gensokyo.cloud'
+        api_base_url = os.environ['MASTODON_API_BASE']
     )
 
 def reserve_snapshot(user_id, snap_type):
@@ -53,7 +55,7 @@ def export_toots(snapshot_id):
         # save toots to AWS S3
         with tempfile.TemporaryDirectory() as tmpdir:
             archive = save_local(toots, tmpdir)
-            bucket = "idean-sample"
+            bucket = os.environ['S3_BUCKET']
             key = 'archive/toots_{0}.zip'.format(snapshot_id)
             save_remote(archive, bucket, key)
         print(archive)

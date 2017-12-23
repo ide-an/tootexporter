@@ -3,8 +3,10 @@ import db
 from datetime import datetime
 from pytz import timezone
 import exporter
+import os
 
 app = Flask(__name__)
+app.secret_key = os.environ['SESSION_SECRET']
 
 def get_db():
     _db = getattr(g, 'db', None)
@@ -54,19 +56,37 @@ def validate_snapshot_form():
 def jpdatetime(datetime_str):
     return timezone("Asia/Tokyo").localize(datetime.strptime(datetime_str, "%Y-%m-%d"))
 
+@app.route('/snapshot/<int:snapshot_id>', methods=['GET'])
+def download_snapshot(snapshot_id):
+    # validation
+    if 'user' not in session: # 誰っす
+        abort(401)
+    user = get_db().get_user_by_mastodon_id(session['user']['id'])
+    snapshot = db.get_snapshot(snapshot_id)
+    if snapshot is None: # ないっす
+        abort(404)
+    if snapshot['owner'] != user['id']: # あんたのじゃないっす
+        abort(401)
+    if snapshot['status'] != db.SNAPSHOT_STATUS_DONE: # まだっす
+        abort(404)
+    # ダウンロード用URL作成
+    url = exporter.generate_download_url(snapshot['bucket'], snapshot['key'])
+    return redirect(url)
+
 # OAuth
+CALLBACK_URL =  os.environ['OAUTH_CALLBACK_URL']
 SESSION_ACCESS_TOKEN = 'access_token'
 SESSION_USER = 'user'
 @app.route('/login')
 def login():
     mastodon = exporter.get_mastodon()
-    return redirect(mastodon.auth_request_url(redirect_uris='http://127.0.0.1:5000/callback',scopes=['read']))
+    return redirect(mastodon.auth_request_url(redirect_uris=CALLBACK_URL,scopes=['read']))
 
 @app.route('/callback')
 def callback():
     code = request.args.get('code','')
     mastodon = exporter.get_mastodon()
-    access_token = mastodon.log_in(code=code,redirect_uri='http://127.0.0.1:5000/callback',scopes=['read'])
+    access_token = mastodon.log_in(code=code,redirect_uri=CALLBACK_URL,scopes=['read'])
     user = mastodon.account_verify_credentials()
 # create session
     session[SESSION_ACCESS_TOKEN] = access_token
@@ -81,4 +101,3 @@ def logout():
     session.pop(SESSION_USER, None)
     return redirect(url_for('index'))
 
-app.secret_key = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
