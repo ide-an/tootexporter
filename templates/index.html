@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>gensokyo.cloud toot exporter</title>
+    <!-- bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <style>
+      .waiting_num {
+        font-size: 3em;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>gensokyo.cloud toot exporter</h1>
+      <p>gensokyo.cloudの投稿やふぁぼを保存するツールです。</p>
+
+      {% if user %}
+      <p><img src="{{ user.avatar }}" width="32" height="32"> <strong>{{ user.display_name }}</strong> @{{ user.acct }} でログイン中</p>
+      <p><a href="/logout" class="btn btn-default">ログアウト</a></p>
+      {% else %}
+      <p><a href="/login" class="btn btn-primary">gensokyo.cloudでログイン</a></p>
+      {% endif %}
+
+      <h2>現在の保存待ち</h2>
+      <div><strong class="waiting_num">10</strong>件</div>
+
+      <h2>あなたの保存待ち状況</h2>
+      {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      {% for message in messages %}
+      <div class="alert alert-danger" role="alert">{{ message }}</div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+
+      {% if user %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>保存日</th>
+            <th>自投稿 or ふぁぼ</th>
+            <th>取得状況</th>
+            <th>保存データ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for snap in snapshots %}
+          <tr>
+            <td>{{ snap.created_at | datetime }}</td>
+            <td>
+              {% if snap.snap_type == "toot" %}
+              自投稿
+              {% elif snap.snap_type == "fav"  %}
+              ふぁぼ
+              {% endif %}
+            </td>
+            <td>
+              {% if snap.status == "wait" %}
+              <span class="label label-default">順番待ち</span>
+              {% elif snap.status == "doing" %}
+              <span class="label label-info">保存中</span>
+              {% elif snap.status == "done"  %}
+              <span class="label label-success">保存済み</span>
+              {% elif snap.status == "fail"  %}
+              <span class="label label-danger">失敗</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if snap.status == "done"  %}
+              <a href="{{ url_for('download_snapshot', snapshot_id=snap.id) }}">ダウンロード</a>
+              {% else %}
+              --
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="alert alert-warning" role="alert">ログインしていません。</div>
+      {% endif %}
+
+      <h2>トゥートを保存する</h2>
+      {% if user %}
+      <form class="form" method="POST" action="/snapshot">
+        <div class="form-group">
+          <label for="snap_type">取得するトゥートの種類</label>
+          <div class="input-group" id="snap_type">
+            <select class="form-control" id="snap_type" name="snap_type">
+              <option value="toot">自分の投稿</option>
+              <option value="fav">自分のお気に入り（ふぁぼ）</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">保存する</button>
+      </form>
+      {% else %}
+      <div class="alert alert-warning" role="alert">ログインしていません。</div>
+      {% endif %}
+
+    </div>
+  </body>
+</html>
+
+

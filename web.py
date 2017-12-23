@@ -1,12 +1,18 @@
 from flask import Flask,render_template,g,redirect,request,session,url_for,abort,flash
 import db
 from datetime import datetime
-from pytz import timezone
+import pytz
 import exporter
 import os
 
 app = Flask(__name__)
 app.secret_key = os.environ['SESSION_SECRET']
+# datetimeがnaive(実際はutc)で渡ってくるのでいいかんじに日本時間で整形する
+tz_japan = pytz.timezone('Asia/Tokyo')
+def format_datetime(value):
+    return pytz.utc.localize(value).astimezone(tz_japan).strftime('%Y-%m-%d %H:%M:%S')
+
+app.jinja_env.filters['datetime'] = format_datetime
 
 def get_db():
     _db = getattr(g, 'db', None)
@@ -28,7 +34,7 @@ def index():
         dbdata = get_db().get_user_by_mastodon_id(user['id'])
         if dbdata is not None:
             snapshots = get_db().get_snapshots_by_owner(dbdata['id'])
-    return render_template('hello.html', name='john', user=user, dbdata = dbdata, snapshots= snapshots)
+    return render_template('index.html', user=user, snapshots=snapshots)
 
 @app.route('/snapshot', methods=['POST'])
 def save_snapshot():
@@ -39,7 +45,7 @@ def save_snapshot():
         flash("なんか入力がミスってる")
         return redirect(url_for('index'))
     snap_type = request.form['snap_type']
-    app.logger.debug("snapshot: type %s", snap_type)
+    app.logger.warning("snapshot: type %s", snap_type)
     exporter.reserve_snapshot(user['id'], snap_type)
     return redirect(url_for('index'))
 
@@ -50,11 +56,8 @@ def validate_snapshot_form():
             return False
         return True
     except Exception as e:
-        app.logger.debug(e)
+        app.logger.warning(e)
         return False
-
-def jpdatetime(datetime_str):
-    return timezone("Asia/Tokyo").localize(datetime.strptime(datetime_str, "%Y-%m-%d"))
 
 @app.route('/snapshot/<int:snapshot_id>', methods=['GET'])
 def download_snapshot(snapshot_id):
@@ -62,7 +65,7 @@ def download_snapshot(snapshot_id):
     if 'user' not in session: # 誰っす
         abort(401)
     user = get_db().get_user_by_mastodon_id(session['user']['id'])
-    snapshot = db.get_snapshot(snapshot_id)
+    snapshot = get_db().get_snapshot(snapshot_id)
     if snapshot is None: # ないっす
         abort(404)
     if snapshot['owner'] != user['id']: # あんたのじゃないっす
