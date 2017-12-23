@@ -4,6 +4,41 @@ gensokyo.cloudの投稿サルベージツール
 
 ## Herokuへのデプロイ
 
+あらかじめAWSでクレデンシャルの作成とS3バケットを作成しておく。
+
+```bash
+heroku login
+# heroku作成
+heroku create
+# addon追加
+heroku addons:create heroku-postgresql:hobby-dev
+heroku addons:create heroku-redis:hobby-dev
+# 設定確認。DATABASE_URLとREDIS_URLが表示される
+heroku config
+# 正しい`OAUTH_CALLBACK_URL`を取得
+heroku info -s 2> /dev/null | grep web_url | sed 's#web_url=##' | sed 's#$#callback#'
+# mastodonのクレデンシャル取得
+OAUTH_CALLBACK_URL=(↑のURL) MASTODON_API_BASE=https://gensokyo.cloud python tools/register_mastodon.py
+# .envを作成し、以下の設定を修正
+#  * OAUTH_CALLBACK_URL
+#  * MASTODON_CLIENT_SECRET
+#  * MASTODON_API_BASE
+#  * AWS_ACCESS_KEY_ID
+#  * AWS_SECRET_ACCESS_KEY
+#  * S3_BUCKET
+#  * SESSION_SECRET
+#  * DATABASE_URL
+#  * REDIS_URL
+cp .env.sample .env
+vi .env
+heroku plugins:install heroku-config
+heroku config:push
+# db初期化
+heroku pg:psql  < schema.sql
+# push
+git push heroku master
+heroku scale worker=1
+```
 
 ## 開発環境セットアップ
 
