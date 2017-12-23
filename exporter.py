@@ -9,6 +9,7 @@ import traceback
 import tempfile
 import os.path as path
 import shutil
+import boto3
 
 q = Queue(connection=conn)
 
@@ -32,6 +33,7 @@ def export_toots(snapshot_id):
         db.update_snapshot(snapshot_id, {'status': dbpkg.SNAPSHOT_STATUS_DOING})
         m = get_mastodon(access_token = owner['access_token'])
         print(snapshot)
+        # collect all toots
         toots = []
         if snapshot['snap_type'] == dbpkg.SNAPSHOT_TYPE_TOOT:
             page = m.account_statuses(owner['mastodon_id'], limit=100)
@@ -48,11 +50,18 @@ def export_toots(snapshot_id):
                     break
                 toots += page
                 sleep(1)
-        # TODO: generate html
-        archive = save_local(toots)
+        # save toots to AWS S3
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive = save_local(toots, tmpdir)
+            bucket = "idean-sample"
+            key = 'archive/toots_{0}.zip'.format(snapshot_id)
+            save_remote(archive, bucket, key)
         print(archive)
-        # TODO: save to S3
-        db.update_snapshot(snapshot_id, {'status': dbpkg.SNAPSHOT_STATUS_DONE})
+        db.update_snapshot(snapshot_id, {
+            'status': dbpkg.SNAPSHOT_STATUS_DONE,
+            'bucket': bucket,
+            'key': key,
+        })
     except Exception as e:
         print('snapshot failed: {0}'.format(snapshot_id))
         print(traceback.format_exc())
@@ -62,19 +71,39 @@ def export_toots(snapshot_id):
             print('snapshot failed: {0}'.format(snapshot_id))
             print(traceback.format_exc())
 
-def save_local(toots):
+def save_local(toots, tmpdir):
     '''
     return path to archive
     '''
-    tmpdir = tempfile.mkdtemp()
-    with open(path.join(tmpdir, 'toots.js'), 'w') as f:
-        f.write('''
-var toots = 
-        ''')
+    archive_root = path.join(tmpdir, 'archive')
+    shutil.copytree('archive_assets/', archive_root)
+    with open(path.join(archive_root, 'toots.js'), 'w') as f:
+        f.write('var toots = \n')
         f.write(json.dumps(toots, default=json_default))
-    shutil.copy('archive_assets/index.html', path.join(tmpdir, 'index.html'))
-    shutil.copy('archive_assets/jquery-3.2.1.min.js', path.join(tmpdir, 'jquery-3.2.1.min.js'))
-    return shutil.make_archive("save", "zip", tmpdir)
+    return shutil.make_archive(path.join(tmpdir, 'toots'), "zip", archive_root)
+
+def save_remote(archive_path, bucket, key):
+    '''
+    save archive to AWS S3
+    '''
+    s3 = boto3.client('s3')
+    with open(archive_path, 'rb') as data:
+        s3.upload_fileobj(data, bucket, key)
+
+def generate_download_url(bucket, key):
+    '''
+    generate download url for saved archive in AWS S3
+    generated url expires in 24hours
+    '''
+    s3 = boto3.client('s3')
+    return s3.generate_presigned_url(
+        ClientMethod='get_object',
+        Params={
+            'Bucket': bucket,
+            'Key': key,
+        },
+        ExpiresIn = 60*60*24
+    )
 
 # datetimeがjson serializableじゃないので変換を定義する
 def json_default(o):
