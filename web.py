@@ -4,6 +4,7 @@ from datetime import datetime
 import pytz
 import exporter
 import os
+import json
 
 app = Flask(__name__)
 app.secret_key = os.environ['SESSION_SECRET']
@@ -24,18 +25,29 @@ def get_db():
 def close_db(error):
     get_db().close_db()
 
+def jsonifySnapshots(snapshots):
+    return json.dumps([dict(s) for s in snapshots],default=exporter.json_default)
+
 @app.route('/')
 def index():
     user = None
     dbdata = None
     snapshots = None
+    json_snapshots = None
     if 'user' in session:
         user = session['user']
         dbdata = get_db().get_user_by_mastodon_id(user['id'])
         if dbdata is not None:
             snapshots = get_db().get_snapshots_by_owner(dbdata['id'])
+            json_snapshots=jsonifySnapshots(snapshots)
     waiting_count = get_db().count_waiting_snapshots()
-    return render_template('index.html', user=user, snapshots=snapshots, waiting_count=waiting_count)
+    return render_template(
+        'index.html',
+        user=user,
+        snapshots=snapshots,
+        waiting_count=waiting_count,
+        json_snapshots=json_snapshots
+    )
 
 @app.route('/snapshot', methods=['POST'])
 def save_snapshot():
@@ -49,6 +61,16 @@ def save_snapshot():
     exporter.reserve_snapshot(user['id'], snap_type)
     flash('保存依頼を受け付けました。', 'info')
     return redirect(url_for('index'))
+
+@app.route('/api/snapshots')
+def user_snapshots():
+    if 'user' not in session:
+        abort(401)
+    user = get_db().get_user_by_mastodon_id(session['user']['id'])
+    if user is None:
+        abort(404)
+    snapshots = get_db().get_snapshots_by_owner(user['id'])
+    return jsonifySnapshots(snapshots)
 
 def validate_snapshot_form():
     try:
