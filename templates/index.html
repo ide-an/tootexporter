@@ -7,6 +7,7 @@
     <title>gensokyo.cloud toot exporter</title>
     <!-- bootstrap -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
 
     <style>
       .waiting_count {
@@ -16,6 +17,75 @@
         margin: 50px;
       }
     </style>
+    {% if user %}
+    <script type="text/javascript">
+      $(function() {
+        // job monitoring
+        var monitor_entry_point = '{{ url_for("user_snapshots") }}';
+        var current_snapshots = {{ json_snapshots | safe }};
+        var notify = function(title, body) {
+          var n = new Notification(title, {
+            body: body,
+          });
+          setTimeout(n.close.bind(n), 5000);
+        };
+        var shouldMonitor = function(snapshots) {
+          return snapshots.some(function(s) {
+            return s.status === 'wait' || s.status === 'doing';
+          });
+        };
+        var monitorJob =function() {
+          if (!shouldMonitor(current_snapshots)) {
+            return;
+          }
+          $.getJSON(monitor_entry_point, function(new_snapshots){
+            var len = Math.min(new_snapshots.length, current_snapshots.length);
+            var should_reload = false;
+            for (var i=0;i<len;i++) {
+              if (new_snapshots[i].status !== current_snapshots[i].status) {
+                var title = "";
+                var message = "";
+                var snap_type = (new_snapshots[i].snap_type === 'toot' ? '投稿' : 'ふぁぼ');
+                switch (new_snapshots[i].status) {
+                  case 'doing':
+                    title = '保存開始';
+                    message = snap_type + 'の保存を開始しました';
+                    break;
+                  case 'done':
+                    title = '保存完了';
+                    message = snap_type + 'の保存が完了しました';
+                    break;
+                  case 'fail':
+                    title = '保存失敗';
+                    message = snap_type + 'の保存に失敗しました';
+                    break;
+                }
+                notify(title, message);
+                should_reload = true;
+              }
+            }
+            if (should_reload) {
+              location.reload();
+            } else {
+              current_snapshots = new_snapshots;
+              setTimeout(monitorJob, 30*1000);
+            }
+          });
+        };
+        if ("Notification" in window) {
+          if (Notification.permission === 'granted') {
+            monitorJob();
+          } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission(function(permission) {
+              if (permission === 'granted') {
+                monitorJob();
+              }
+            });
+          }
+        }
+      })
+    </script>
+    {% endif %}
   </head>
 
   <body>
