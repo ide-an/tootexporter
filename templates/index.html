@@ -23,6 +23,8 @@
       <h1>gensokyo.cloud toot exporter</h1>
       <p>よおこそ。gensokyo.cloudの投稿やふぁぼを保存するツールです。</p>
 
+      <div class="alert alert-warning" role="alert">現在、画像や動画のエクスポートは未対応です。</div>
+
       {% if user %}
       <p><img src="{{ user.avatar }}" width="32" height="32"> <strong>{{ user.display_name }}</strong> @{{ user.acct }} でログイン中</p>
       <p><a href="/logout" class="btn btn-default">ログアウト</a></p>
