@@ -13,6 +13,7 @@ import boto3
 import os
 import urllib.request as request
 from urllib.parse import urlparse
+from concurrent.futures import ThreadPoolExecutor
 
 q = Queue(connection=conn)
 
@@ -98,6 +99,16 @@ def export_media(toots, tmpdir):
     print("media total {0}".format(len(media_urls)))
     media_root = path.join(tmpdir, 'media')
     os.makedirs(media_root)
+# download images in parallel
+    media_urls = list(media_urls)
+    worker_num = 4
+    with ThreadPoolExecutor(max_workers=worker_num) as e:
+        for i in range(worker_num):
+            e.submit(download_media, media_urls[i::worker_num], media_root, i)
+    print('image download complete!')
+    return media_root
+
+def download_media(media_urls, media_root, worker_id):
     i = 0
     for url in media_urls:
         try:
@@ -109,12 +120,10 @@ def export_media(toots, tmpdir):
         except Exception as e:
             print('media download failed: {0}'.format(url))
             print(traceback.format_exc())
-        sleep(0.5)
+        sleep(1)
         i += 1
         if i % 10 == 0: # debug log
-            print('image download: {0}/{1}'.format(i, len(media_urls)))
-    print('image download complete!')
-    return media_root
+            print('image download: {0}/{1} @{2}'.format(i, len(media_urls), worker_id))
 
 def save_local(toots, tmpdir, media_root):
     '''
