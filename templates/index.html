@@ -91,10 +91,9 @@
   <body>
     <div class="container">
       <h1>gensokyo.cloud toot exporter</h1>
-      <p>よおこそ。gensokyo.cloudの投稿やふぁぼを保存するツールです。</p>
+      <p>よおこそ。gensokyo.cloudの投稿やふぁぼを保存するツールです。トゥートに添付した画像や動画も保存します。</p>
 
-      <div class="alert alert-warning" role="alert">現在、画像や動画のエクスポートは未対応です。</div>
-      <div class="alert alert-info" role="alert">保存にだいたい <code>(トゥート数)/(800～1000)</code> 分くらいかかります（例：3万トゥートなら30～40分程度）。 </div>
+      <div class="alert alert-info" role="alert">保存にだいたい <code>(トゥート数)/(800～1000) + (画像数)/(80～100)</code> 分くらいかかります（例：3万トゥートで画像数1000なら40～50分程度）。 </div>
 
       {% if user %}
       <p><img src="{{ user.avatar }}" width="32" height="32"> <strong>{{ user.display_name }}</strong> @{{ user.acct }} でログイン中</p>
