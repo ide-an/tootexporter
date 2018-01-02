@@ -11,6 +11,8 @@ import os.path as path
 import shutil
 import boto3
 import os
+import urllib.request as request
+from urllib.parse import urlparse
 
 q = Queue(connection=conn)
 
@@ -60,7 +62,8 @@ def export_toots(snapshot_id):
                 raise SystemError('too many API call')
         # save toots to AWS S3
         with tempfile.TemporaryDirectory() as tmpdir:
-            archive = save_local(toots, tmpdir)
+            media_root = export_media(toots, tmpdir)
+            archive = save_local(toots, tmpdir, media_root)
             bucket = os.environ['S3_BUCKET']
             key = 'archive/toots_{0}.zip'.format(snapshot_id)
             save_remote(archive, bucket, key)
@@ -79,7 +82,41 @@ def export_toots(snapshot_id):
             print('snapshot failed: {0}'.format(snapshot_id))
             print(traceback.format_exc())
 
-def save_local(toots, tmpdir):
+def export_media(toots, tmpdir):
+    # collect all media attachment urls
+    media_urls = set()
+    for t in toots:
+        media_urls.add(t['account']['avatar']) # アバター
+        for m in t['media_attachments']: # メディア
+            media_urls.add(m['url'])
+            media_urls.add(m['preview_url'])
+        if t['reblog'] is not None: # RTのアバターとメディア
+            media_urls.add(t['reblog']['account']['avatar'])
+            for m in t['reblog']['media_attachments']:
+                media_urls.add(m['url'])
+                media_urls.add(m['preview_url'])
+    print("media total {0}".format(len(media_urls)))
+    media_root = path.join(tmpdir, 'media')
+    os.makedirs(media_root)
+    i = 0
+    for url in media_urls:
+        try:
+            filepath = path.join(media_root, urlparse(url).path[1:])
+            with request.urlopen(url) as f:
+                os.makedirs(path.dirname(filepath))
+                with open(filepath, 'wb') as g:
+                    g.write(f.read())
+        except Exception as e:
+            print('media download failed: {0}'.format(url))
+            print(traceback.format_exc())
+        sleep(0.5)
+        i += 1
+        if i % 10 == 0: # debug log
+            print('image download: {0}/{1}'.format(i, len(media_urls)))
+    print('image download complete!')
+    return media_root
+
+def save_local(toots, tmpdir, media_root):
     '''
     return path to archive
     '''
@@ -88,6 +125,7 @@ def save_local(toots, tmpdir):
     with open(path.join(archive_root, 'toots.js'), 'w') as f:
         f.write('var toots = \n')
         f.write(json.dumps(toots, default=json_default))
+    shutil.move(media_root, path.join(archive_root, 'media'))
     return shutil.make_archive(path.join(tmpdir, 'toots'), "zip", archive_root)
 
 def save_remote(archive_path, bucket, key):

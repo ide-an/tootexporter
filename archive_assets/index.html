@@ -7,11 +7,18 @@
     <script src="./jquery-3.2.1.min.js"></script>
     <script>
       $(function(){
+        function tolocalpath(media_url) {
+          var matched = media_url.match(/^.*media.gensokyo.cloud(.*)$/)
+          if (matched && matched[1]) {
+            return 'media' + matched[1];
+          }
+          return '';
+        }
         function toothtml(toot) {
           var el = $("#template > .status").clone();
           var datestr = (new Date(toot.created_at)).toLocaleString();
           el.find(".status__info time").text(datestr);
-          el.find(".status__avatar img").attr("src", toot.account.avatar);
+          el.find(".status__avatar img").attr("src", tolocalpath(toot.account.avatar));
           el.find(".display-name__html").text(toot.account.display_name);
           el.find(".display-name__account").text("@"+toot.account.acct);
           if (toot.spoiler_text != "") {
@@ -23,8 +30,8 @@
           if (toot.media_attachments.length > 0) {
             toot.media_attachments.forEach(function(media) {
               var item_el = $('<div class="media-gallery__item"><a class="media-gallery__item-thumbnail" target="_blank"><img></a><span class="media_type"></span></div>');
-              item_el.find(".media-gallery__item-thumbnail").attr("href",media.url);
-              item_el.find(".media-gallery__item-thumbnail img").attr("src",media.preview_url);
+              item_el.find(".media-gallery__item-thumbnail").attr("href", tolocalpath(media.url));
+              item_el.find(".media-gallery__item-thumbnail img").attr("src", tolocalpath(media.preview_url));
               if (media.type === "image") {
                 item_el.find(".media_type").hide();
               } else {
