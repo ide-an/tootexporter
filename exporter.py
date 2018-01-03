@@ -48,11 +48,11 @@ def export_toots(snapshot_id):
             page = m.favourites(limit=100)
         else:
             raise ValueError('invalid snap_type: {0}'.format(snapshot['snap_type']))
-        if page is not None:
+        if page is not None and len(page) > 0:
             toots += page
             for i in range(API_CALL_MAX):
                 page = m.fetch_next(page)
-                if page is None:
+                if page is None or len(page) <= 0:
                     print('API call:{0}, toots:{1}'.format(i, len(toots))) # debug log
                     break
                 toots += page
